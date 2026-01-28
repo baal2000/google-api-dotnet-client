@@ -52,7 +52,20 @@ namespace Google.Apis.Requests.Parameters
             IList<KeyValuePair<string, string>> list = new List<KeyValuePair<string, string>>();
             IterateParameters(request, (type, name, value) =>
                 {
-                    list.Add(new KeyValuePair<string, string>(name, value.ToString()));
+                    // Handle IEnumerable values specially (consistent with InitParameters and FromDictionary)
+                    // If the value is an enumerable (but not a string), add a parameter for each value
+                    var valueAsEnumerable = value as IEnumerable;
+                    if (!(value is string) && valueAsEnumerable != null)
+                    {
+                        foreach (var item in valueAsEnumerable)
+                        {
+                            list.Add(new KeyValuePair<string, string>(name, Util.Utilities.ConvertToString(item)));
+                        }
+                    }
+                    else
+                    {
+                        list.Add(new KeyValuePair<string, string>(name, value == null ? null : Util.Utilities.ConvertToString(value)));
+                    }
                 });
             return new FormUrlEncodedContent(list);
         }

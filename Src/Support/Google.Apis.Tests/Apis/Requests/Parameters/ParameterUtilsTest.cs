@@ -21,6 +21,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Google.Apis.Tests.Apis.Requests.Parameters
@@ -193,6 +194,60 @@ namespace Google.Apis.Tests.Apis.Requests.Parameters
             Assert.Contains("single=value", result);
             Assert.DoesNotContain("q=", result);
             Assert.DoesNotContain("mode=", result);
+        }
+
+        private class TestFormRequest
+        {
+            [RequestParameter("q", RequestParameterType.Query)]
+            public string[] QueryArray { get; set; }
+
+            [RequestParameter("mode", RequestParameterType.Query)]
+            public Repeatable<FileMode> ModeList { get; set; }
+
+            [RequestParameter("single", RequestParameterType.Query)]
+            public string Single { get; set; }
+        }
+
+        [Fact]
+        public async Task CreateFormUrlEncodedContent_HandlesIEnumerableValues()
+        {
+            var request = new TestFormRequest()
+            {
+                QueryArray = new[] { "foo", "bar" },
+                ModeList = new[] { FileMode.Open, FileMode.Append },
+                Single = "value"
+            };
+
+            var formContent = ParameterUtils.CreateFormUrlEncodedContent(request);
+            var contentString = await formContent.ReadAsStringAsync();
+
+            // Array values should be expanded into multiple parameters
+            Assert.Contains("q=foo", contentString);
+            Assert.Contains("q=bar", contentString);
+
+            // Repeatable values should also be expanded
+            Assert.Contains("mode=Open", contentString);
+            Assert.Contains("mode=Append", contentString);
+
+            // Single values should work as before
+            Assert.Contains("single=value", contentString);
+        }
+
+        [Fact]
+        public async Task CreateFormUrlEncodedContent_HandlesNullValues()
+        {
+            var request = new TestFormRequest()
+            {
+                QueryArray = null,
+                ModeList = null,
+                Single = "value"
+            };
+
+            var formContent = ParameterUtils.CreateFormUrlEncodedContent(request);
+            var contentString = await formContent.ReadAsStringAsync();
+
+            // Null values should be handled gracefully
+            Assert.Contains("single=value", contentString);
         }
     }
 }
