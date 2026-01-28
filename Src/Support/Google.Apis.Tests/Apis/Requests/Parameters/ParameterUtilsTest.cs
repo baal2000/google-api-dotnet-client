@@ -248,6 +248,9 @@ namespace Google.Apis.Tests.Apis.Requests.Parameters
 
             // Null values should be handled gracefully
             Assert.Contains("single=value", contentString);
+            // Null enumerable values should not produce parameters
+            Assert.DoesNotContain("q=", contentString);
+            Assert.DoesNotContain("mode=", contentString);
         }
     }
 }
