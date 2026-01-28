@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Linq;
@@ -116,7 +117,20 @@ namespace Google.Apis.Requests.Parameters
         {
             IterateParameters(request, (type, name, value) =>
                 {
-                    builder.AddParameter(type, name, value.ToString());
+                    // Handle IEnumerable values specially (consistent with ParameterCollection.FromDictionary)
+                    // If the value is an enumerable (but not a string), add a parameter for each value
+                    var valueAsEnumerable = value as IEnumerable;
+                    if (!(value is string) && valueAsEnumerable != null)
+                    {
+                        foreach (var item in valueAsEnumerable)
+                        {
+                            builder.AddParameter(type, name, Util.Utilities.ConvertToString(item));
+                        }
+                    }
+                    else
+                    {
+                        builder.AddParameter(type, name, value == null ? null : Util.Utilities.ConvertToString(value));
+                    }
                 });
         }
 

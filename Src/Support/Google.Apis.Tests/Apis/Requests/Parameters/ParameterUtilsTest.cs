@@ -130,5 +130,69 @@ namespace Google.Apis.Tests.Apis.Requests.Parameters
             };
             Assert.Throws<InvalidOperationException>(() => ParameterUtils.CreateParameterDictionary(request));
         }
+
+        private class TestRequestWithIEnumerable
+        {
+            [RequestParameter("q", RequestParameterType.Query)]
+            public string[] QueryArray { get; set; }
+
+            [RequestParameter("mode", RequestParameterType.Query)]
+            public Repeatable<FileMode> ModeList { get; set; }
+
+            [RequestParameter("single", RequestParameterType.Query)]
+            public string Single { get; set; }
+
+            public System.Uri Build()
+            {
+                var builder = new RequestBuilder()
+                {
+                    BaseUri = new System.Uri("http://example.com/api")
+                };
+                ParameterUtils.InitParameters(builder, this);
+                return builder.BuildUri();
+            }
+        }
+
+        [Fact]
+        public void InitParameters_HandlesIEnumerableValues()
+        {
+            var request = new TestRequestWithIEnumerable()
+            {
+                QueryArray = new[] { "foo", "bar" },
+                ModeList = new[] { FileMode.Open, FileMode.Append },
+                Single = "value"
+            };
+
+            var result = request.Build().AbsoluteUri;
+
+            // Array values should be expanded into multiple parameters
+            Assert.Contains("q=foo", result);
+            Assert.Contains("q=bar", result);
+
+            // Repeatable values should also be expanded
+            Assert.Contains("mode=Open", result);
+            Assert.Contains("mode=Append", result);
+
+            // Single values should work as before
+            Assert.Contains("single=value", result);
+        }
+
+        [Fact]
+        public void InitParameters_HandlesNullAndEmptyValues()
+        {
+            var request = new TestRequestWithIEnumerable()
+            {
+                QueryArray = null,
+                ModeList = null,
+                Single = "value"
+            };
+
+            var result = request.Build().AbsoluteUri;
+
+            // Null values should be handled gracefully
+            Assert.Contains("single=value", result);
+            Assert.DoesNotContain("q=", result);
+            Assert.DoesNotContain("mode=", result);
+        }
     }
 }
