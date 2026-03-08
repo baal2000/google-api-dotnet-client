@@ -25,8 +25,8 @@ namespace Google.Apis.Util
     /// Provides cached reflection results for request parameter discovery.
     /// </summary>
     /// <remarks>
-    /// This cache is intentionally unbounded and keyed by request type. The set of request types decorated with
-    /// <see cref="RequestParameterAttribute"/> is expected to be finite and stable for the lifetime of the application.
+    /// This cache is only used when <see cref="ReflectionCacheSettings.EnableReflectionCache"/> is set to true.
+    /// By default, reflection results are recomputed on each call to avoid memory overhead.
     /// </remarks>
     internal static partial class ReflectionCache
     {
@@ -43,20 +43,32 @@ namespace Google.Apis.Util
             new ConcurrentDictionary<Type, PropertyWithAttribute[]>();
 
         /// <summary>
-        /// Returns the cached set of request-parameter properties for the specified request type.
+        /// Returns the set of request-parameter properties for the specified request type.
+        /// Uses caching if <see cref="ReflectionCacheSettings.EnableReflectionCache"/> is enabled.
         /// </summary>
         /// <param name="type">The type to get request parameter properties for.</param>
         /// <returns>An array of <see cref="PropertyWithAttribute"/> structs containing properties and their RequestParameterAttribute.</returns>
         internal static PropertyWithAttribute[] GetRequestParameterProperties(Type type)
         {
-            return RequestParameterPropertiesCache.GetOrAdd(type, t =>
+            // Only use cache if explicitly enabled by user
+            if (ReflectionCacheSettings.EnableReflectionCache)
             {
-                // Get properties, filter by attribute, and cache only the filtered result
-                return t.GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                    .Select(prop => new PropertyWithAttribute(prop, prop.GetCustomAttribute<RequestParameterAttribute>(inherit: false)))
-                    .Where(pwa => pwa.Attribute != null)
-                    .ToArray();
-            });
+                return RequestParameterPropertiesCache.GetOrAdd(type, ComputeProperties);
+            }
+
+            // Default behavior: compute properties without caching
+            return ComputeProperties(type);
+        }
+
+        /// <summary>
+        /// Computes the request parameter properties for a given type using reflection.
+        /// </summary>
+        private static PropertyWithAttribute[] ComputeProperties(Type type)
+        {
+            return type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                .Select(prop => new PropertyWithAttribute(prop, prop.GetCustomAttribute<RequestParameterAttribute>(inherit: false)))
+                .Where(pwa => pwa.Attribute != null)
+                .ToArray();
         }
     }
 }

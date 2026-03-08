@@ -261,25 +261,36 @@ namespace Google.Apis.Tests.Apis.Requests.Parameters
         [Fact]
         public void InitParametersWithExpansion_CacheUsage()
         {
-            var request1 = new TestRequestWithScalars { Name = "test1", Id = 1 };
-            var request2 = new TestRequestWithScalars { Name = "test2", Id = 2 };
-            var builder1 = new RequestBuilder { BaseUri = new Uri("https://example.com/api") };
-            var builder2 = new RequestBuilder { BaseUri = new Uri("https://example.com/api") };
-            
-            // First call - cache is populated
-            ParameterUtils.InitParametersWithExpansion(builder1, request1);
-            var properties1 = Google.Apis.Util.ReflectionCache.GetRequestParameterProperties(typeof(TestRequestWithScalars));
-            
-            // Second call - should reuse cached PropertyInfo
-            ParameterUtils.InitParametersWithExpansion(builder2, request2);
-            var properties2 = Google.Apis.Util.ReflectionCache.GetRequestParameterProperties(typeof(TestRequestWithScalars));
-            
-            // Verify same PropertyInfo instances are returned (object reference equality)
-            Assert.Equal(properties1.Length, properties2.Length);
-            for (int i = 0; i < properties1.Length; i++)
+            var originalState = ReflectionCacheSettings.EnableReflectionCache;
+            try
             {
-                Assert.Same(properties1[i].Property, properties2[i].Property);
-                Assert.Same(properties1[i].Attribute, properties2[i].Attribute);
+                // Arrange - explicitly enable cache
+                ReflectionCacheSettings.EnableReflectionCache = true;
+
+                var request1 = new TestRequestWithScalars { Name = "test1", Id = 1 };
+                var request2 = new TestRequestWithScalars { Name = "test2", Id = 2 };
+                var builder1 = new RequestBuilder { BaseUri = new Uri("https://example.com/api") };
+                var builder2 = new RequestBuilder { BaseUri = new Uri("https://example.com/api") };
+                
+                // First call - cache is populated
+                ParameterUtils.InitParametersWithExpansion(builder1, request1);
+                var properties1 = Google.Apis.Util.ReflectionCache.GetRequestParameterProperties(typeof(TestRequestWithScalars));
+                
+                // Second call - should reuse cached PropertyInfo
+                ParameterUtils.InitParametersWithExpansion(builder2, request2);
+                var properties2 = Google.Apis.Util.ReflectionCache.GetRequestParameterProperties(typeof(TestRequestWithScalars));
+                
+                // Verify same PropertyInfo instances are returned (object reference equality)
+                Assert.Equal(properties1.Length, properties2.Length);
+                for (int i = 0; i < properties1.Length; i++)
+                {
+                    Assert.Same(properties1[i].Property, properties2[i].Property);
+                    Assert.Same(properties1[i].Attribute, properties2[i].Attribute);
+                }
+            }
+            finally
+            {
+                ReflectionCacheSettings.EnableReflectionCache = originalState;
             }
         }
 
@@ -336,6 +347,43 @@ namespace Google.Apis.Tests.Apis.Requests.Parameters
                 Assert.Contains("part=value1", query);
                 Assert.Contains("part=value2", query);
                 Assert.Contains($"part={Uri.EscapeDataString(expectedNullValue)}", query);
+            }
+        }
+
+        [Theory]
+        [InlineData(false)] // Cache disabled (default)
+        [InlineData(true)]  // Cache enabled
+        public void IterateParameters_WorksWithBothCacheModes(bool enableCache)
+        {
+            // Arrange
+            var originalState = ReflectionCacheSettings.EnableReflectionCache;
+            try
+            {
+                ReflectionCacheSettings.EnableReflectionCache = enableCache;
+                var request = new TestRequestUrl()
+                {
+                    FirstParam = "firstOne",
+                    SecondParam = "secondOne",
+                    ParamsCollection = new List<KeyValuePair<string, string>>{
+                        new KeyValuePair<string,string>("customParam1","customVal1"),
+                        new KeyValuePair<string,string>("customParam2","customVal2")
+                    }
+                };
+
+                // Act
+                var result = request.Build().AbsoluteUri;
+
+                // Assert - behavior should be identical regardless of cache setting
+                Assert.Contains("first_query_param=firstOne", result);
+                Assert.Contains("second_query_param=secondOne", result);
+                Assert.Contains("customParam1=customVal1", result);
+                Assert.Contains("customParam2=customVal2", result);
+                Assert.DoesNotContain("query_param_attribute_name", result);
+            }
+            finally
+            {
+                // Restore original state
+                ReflectionCacheSettings.EnableReflectionCache = originalState;
             }
         }
     }

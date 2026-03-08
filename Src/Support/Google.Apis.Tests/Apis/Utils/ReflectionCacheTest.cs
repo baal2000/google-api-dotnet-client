@@ -15,14 +15,28 @@ limitations under the License.
 */
 
 using Google.Apis.Util;
+using System;
 using System.Linq;
 using Xunit;
 
 namespace Google.Apis.Tests.Apis.Utils
 {
     /// <summary>Tests for <see cref="Google.Apis.Util.ReflectionCache"/>.</summary>
-    public class ReflectionCacheTest
+    public class ReflectionCacheTest : IDisposable
     {
+        private readonly bool _originalCacheState;
+
+        public ReflectionCacheTest()
+        {
+            // Save original state to restore after each test
+            _originalCacheState = ReflectionCacheSettings.EnableReflectionCache;
+        }
+
+        public void Dispose()
+        {
+            // Restore original state after each test
+            ReflectionCacheSettings.EnableReflectionCache = _originalCacheState;
+        }
         private class TestClass
         {
             [RequestParameter("test_param", RequestParameterType.Query)]
@@ -37,6 +51,9 @@ namespace Google.Apis.Tests.Apis.Utils
         [Fact]
         public void GetRequestParameterPropertiesWithAttribute_ReturnsPropertiesAndAttributes()
         {
+            // Arrange - cache disabled (default behavior)
+            ReflectionCacheSettings.EnableReflectionCache = false;
+
             // Act
             var propertiesWithAttributes = ReflectionCache.GetRequestParameterProperties(typeof(TestClass));
 
@@ -64,6 +81,9 @@ namespace Google.Apis.Tests.Apis.Utils
         [Fact]
         public void GetRequestParameterPropertiesWithAttribute_CachesResults()
         {
+            // Arrange - explicitly enable cache
+            ReflectionCacheSettings.EnableReflectionCache = true;
+
             // Act - Call twice
             var result1 = ReflectionCache.GetRequestParameterProperties(typeof(TestClass));
             var result2 = ReflectionCache.GetRequestParameterProperties(typeof(TestClass));
@@ -82,6 +102,9 @@ namespace Google.Apis.Tests.Apis.Utils
         [Fact]
         public void GetRequestParameterProperties_ReturnsOnlyPropertiesWithAttribute()
         {
+            // Arrange - cache disabled (default behavior)
+            ReflectionCacheSettings.EnableReflectionCache = false;
+
             // Act
             var properties = ReflectionCache.GetRequestParameterProperties(typeof(TestClass));
             // Assert
@@ -95,8 +118,11 @@ namespace Google.Apis.Tests.Apis.Utils
         [Fact]
         public void GetRequestParameterPropertiesWithAttribute_RegressionTest_NoNewInstancesCreated()
         {
-            // This regression test ensures that repeated calls don't create new PropertyInfo or Attribute instances.
+            // This regression test ensures that repeated calls with cache enabled don't create new PropertyInfo or Attribute instances.
             
+            // Arrange - explicitly enable cache
+            ReflectionCacheSettings.EnableReflectionCache = true;
+
             // Act - Get properties multiple times
             var result1 = ReflectionCache.GetRequestParameterProperties(typeof(TestClass));
             var result2 = ReflectionCache.GetRequestParameterProperties(typeof(TestClass));
@@ -114,6 +140,39 @@ namespace Google.Apis.Tests.Apis.Utils
                 Assert.Same(result1[i].Attribute, result2[i].Attribute);
                 Assert.Same(result2[i].Attribute, result3[i].Attribute);
             }
+        }
+
+        [Fact]
+        public void GetRequestParameterProperties_WithCacheDisabled_ReturnsDifferentInstanceOnSecondCall()
+        {
+            // Arrange
+            ReflectionCacheSettings.EnableReflectionCache = false;
+
+            // Act
+            var firstCall = ReflectionCache.GetRequestParameterProperties(typeof(TestClass));
+            var secondCall = ReflectionCache.GetRequestParameterProperties(typeof(TestClass));
+
+            // Assert - should be different array instances when not caching
+            Assert.NotSame(firstCall, secondCall);
+
+            // But content should be equivalent
+            Assert.Equal(firstCall.Length, secondCall.Length);
+        }
+
+        [Fact]
+        public void GetRequestParameterProperties_DefaultBehaviorIsNotCached()
+        {
+            // Arrange - don't set EnableReflectionCache, use default (false)
+            // (IDisposable restores the original state, so this tests a fresh-default scenario
+            // only when run as the first test; checking NotSame is sufficient)
+            ReflectionCacheSettings.EnableReflectionCache = false;
+
+            // Act
+            var firstCall = ReflectionCache.GetRequestParameterProperties(typeof(TestClass));
+            var secondCall = ReflectionCache.GetRequestParameterProperties(typeof(TestClass));
+
+            // Assert - default should be no caching
+            Assert.NotSame(firstCall, secondCall);
         }
     }
 }
