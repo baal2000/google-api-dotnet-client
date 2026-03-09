@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+using Google;
 using Google.Apis.Requests;
 using Google.Apis.Requests.Parameters;
 using Google.Apis.Util;
@@ -261,11 +262,11 @@ namespace Google.Apis.Tests.Apis.Requests.Parameters
         [Fact]
         public void InitParametersWithExpansion_CacheUsage()
         {
-            var originalState = ReflectionCacheSettings.EnableReflectionCache;
+            var originalState = ApplicationContext.EnableReflectionCache;
             try
             {
                 // Arrange - explicitly enable cache
-                ReflectionCacheSettings.EnableReflectionCache = true;
+                ApplicationContext.EnableReflectionCache = true;
 
                 var request1 = new TestRequestWithScalars { Name = "test1", Id = 1 };
                 var request2 = new TestRequestWithScalars { Name = "test2", Id = 2 };
@@ -290,7 +291,7 @@ namespace Google.Apis.Tests.Apis.Requests.Parameters
             }
             finally
             {
-                ReflectionCacheSettings.EnableReflectionCache = originalState;
+                ApplicationContext.EnableReflectionCache = originalState;
             }
         }
 
@@ -356,10 +357,10 @@ namespace Google.Apis.Tests.Apis.Requests.Parameters
         public void IterateParameters_WorksWithBothCacheModes(bool enableCache)
         {
             // Arrange
-            var originalState = ReflectionCacheSettings.EnableReflectionCache;
+            var originalState = ApplicationContext.EnableReflectionCache;
             try
             {
-                ReflectionCacheSettings.EnableReflectionCache = enableCache;
+                ApplicationContext.EnableReflectionCache = enableCache;
                 var request = new TestRequestUrl()
                 {
                     FirstParam = "firstOne",
@@ -383,7 +384,7 @@ namespace Google.Apis.Tests.Apis.Requests.Parameters
             finally
             {
                 // Restore original state
-                ReflectionCacheSettings.EnableReflectionCache = originalState;
+                ApplicationContext.EnableReflectionCache = originalState;
             }
         }
     }

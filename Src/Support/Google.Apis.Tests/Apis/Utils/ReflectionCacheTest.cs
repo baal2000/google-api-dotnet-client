@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+using Google;
 using Google.Apis.Util;
 using System;
 using System.Linq;
@@ -29,13 +30,13 @@ namespace Google.Apis.Tests.Apis.Utils
         public ReflectionCacheTest()
         {
             // Save original state to restore after each test
-            _originalCacheState = ReflectionCacheSettings.EnableReflectionCache;
+            _originalCacheState = ApplicationContext.EnableReflectionCache;
         }
 
         public void Dispose()
         {
             // Restore original state after each test
-            ReflectionCacheSettings.EnableReflectionCache = _originalCacheState;
+            ApplicationContext.EnableReflectionCache = _originalCacheState;
         }
         private class TestClass
         {
@@ -52,7 +53,7 @@ namespace Google.Apis.Tests.Apis.Utils
         public void GetRequestParameterPropertiesWithAttribute_ReturnsPropertiesAndAttributes()
         {
             // Arrange - cache disabled (default behavior)
-            ReflectionCacheSettings.EnableReflectionCache = false;
+            ApplicationContext.EnableReflectionCache = false;
 
             // Act
             var propertiesWithAttributes = ReflectionCache.GetRequestParameterProperties(typeof(TestClass));
@@ -82,7 +83,7 @@ namespace Google.Apis.Tests.Apis.Utils
         public void GetRequestParameterPropertiesWithAttribute_CachesResults()
         {
             // Arrange - explicitly enable cache
-            ReflectionCacheSettings.EnableReflectionCache = true;
+            ApplicationContext.EnableReflectionCache = true;
 
             // Act - Call twice
             var result1 = ReflectionCache.GetRequestParameterProperties(typeof(TestClass));
@@ -103,7 +104,7 @@ namespace Google.Apis.Tests.Apis.Utils
         public void GetRequestParameterProperties_ReturnsOnlyPropertiesWithAttribute()
         {
             // Arrange - cache disabled (default behavior)
-            ReflectionCacheSettings.EnableReflectionCache = false;
+            ApplicationContext.EnableReflectionCache = false;
 
             // Act
             var properties = ReflectionCache.GetRequestParameterProperties(typeof(TestClass));
@@ -121,7 +122,7 @@ namespace Google.Apis.Tests.Apis.Utils
             // This regression test ensures that repeated calls with cache enabled don't create new PropertyInfo or Attribute instances.
             
             // Arrange - explicitly enable cache
-            ReflectionCacheSettings.EnableReflectionCache = true;
+            ApplicationContext.EnableReflectionCache = true;
 
             // Act - Get properties multiple times
             var result1 = ReflectionCache.GetRequestParameterProperties(typeof(TestClass));
@@ -146,7 +147,7 @@ namespace Google.Apis.Tests.Apis.Utils
         public void GetRequestParameterProperties_WithCacheDisabled_ReturnsDifferentInstanceOnSecondCall()
         {
             // Arrange
-            ReflectionCacheSettings.EnableReflectionCache = false;
+            ApplicationContext.EnableReflectionCache = false;
 
             // Act
             var firstCall = ReflectionCache.GetRequestParameterProperties(typeof(TestClass));
@@ -165,7 +166,7 @@ namespace Google.Apis.Tests.Apis.Utils
             // Arrange - don't set EnableReflectionCache, use default (false)
             // (IDisposable restores the original state, so this tests a fresh-default scenario
             // only when run as the first test; checking NotSame is sufficient)
-            ReflectionCacheSettings.EnableReflectionCache = false;
+            ApplicationContext.EnableReflectionCache = false;
 
             // Act
             var firstCall = ReflectionCache.GetRequestParameterProperties(typeof(TestClass));

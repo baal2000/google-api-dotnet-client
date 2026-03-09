@@ -18,6 +18,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Reflection;
+using Google;
 
 namespace Google.Apis.Util
 {
@@ -30,7 +31,7 @@ namespace Google.Apis.Util
     /// which allows concurrent reads and writes without external locking.
     /// </para>
     /// <para>
-    /// Caching is opt-in: set <see cref="ReflectionCacheSettings.EnableReflectionCache"/> to <c>true</c>
+    /// Caching is opt-in: set <see cref="ApplicationContext.EnableReflectionCache"/> to <c>true</c>
     /// at application startup to activate it. By default, reflection results are recomputed on every call
     /// to preserve the existing no-overhead-at-rest behavior.
     /// </para>
@@ -49,7 +50,7 @@ namespace Google.Apis.Util
     /// Enable caching once at application startup, before issuing any API requests:
     /// <code>
     /// // Enable caching at application startup
-    /// ReflectionCacheSettings.EnableReflectionCache = true;
+    /// ApplicationContext.EnableReflectionCache = true;
     ///
     /// // The cache is used automatically by ParameterUtils
     /// // (no further configuration required)
@@ -80,7 +81,7 @@ namespace Google.Apis.Util
         /// Only properties that carry the attribute are included; properties without it are omitted.
         /// </returns>
         /// <remarks>
-        /// When <see cref="ReflectionCacheSettings.EnableReflectionCache"/> is <c>true</c>, the result is
+        /// When <see cref="ApplicationContext.EnableReflectionCache"/> is <c>true</c>, the result is
         /// stored in an internal <see cref="ConcurrentDictionary{TKey,TValue}"/> and returned on subsequent
         /// calls without re-executing reflection. When the setting is <c>false</c> (the default), reflection
         /// is performed on every invocation.
@@ -88,7 +89,7 @@ namespace Google.Apis.Util
         public static PropertyWithAttribute[] GetRequestParameterProperties(Type type)
         {
             // Only use cache if explicitly enabled by user
-            if (ReflectionCacheSettings.EnableReflectionCache)
+            if (ApplicationContext.EnableReflectionCache)
             {
                 return RequestParameterPropertiesCache.GetOrAdd(type, ComputeProperties);
             }
