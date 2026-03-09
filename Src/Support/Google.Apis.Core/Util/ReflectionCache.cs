@@ -25,10 +25,37 @@ namespace Google.Apis.Util
     /// Provides cached reflection results for request parameter discovery.
     /// </summary>
     /// <remarks>
-    /// This cache is only used when <see cref="ReflectionCacheSettings.EnableReflectionCache"/> is set to true.
-    /// By default, reflection results are recomputed on each call to avoid memory overhead.
+    /// <para>
+    /// This class is thread-safe. The internal cache uses <see cref="ConcurrentDictionary{TKey,TValue}"/>,
+    /// which allows concurrent reads and writes without external locking.
+    /// </para>
+    /// <para>
+    /// Caching is opt-in: set <see cref="ReflectionCacheSettings.EnableReflectionCache"/> to <c>true</c>
+    /// at application startup to activate it. By default, reflection results are recomputed on every call
+    /// to preserve the existing no-overhead-at-rest behavior.
+    /// </para>
+    /// <para>
+    /// When caching is enabled, each unique request type incurs a one-time reflection cost. Subsequent calls
+    /// for the same type return the cached <see cref="PropertyWithAttribute"/> array directly, eliminating
+    /// per-call reflection and attribute-lookup overhead.
+    /// </para>
+    /// <para>
+    /// The cache is intentionally unbounded, but in practice it is finite: entries are keyed by the concrete
+    /// request types that carry <see cref="RequestParameterAttribute"/>-decorated properties. The set of such
+    /// types in any application is small and fixed at compile time.
+    /// </para>
     /// </remarks>
-    internal static partial class ReflectionCache
+    /// <example>
+    /// Enable caching once at application startup, before issuing any API requests:
+    /// <code>
+    /// // Enable caching at application startup
+    /// ReflectionCacheSettings.EnableReflectionCache = true;
+    ///
+    /// // The cache is used automatically by ParameterUtils
+    /// // (no further configuration required)
+    /// </code>
+    /// </example>
+    public static partial class ReflectionCache
     {
         /// <summary>
         /// Cache of properties filtered by RequestParameterAttribute.
@@ -43,12 +70,22 @@ namespace Google.Apis.Util
             new ConcurrentDictionary<Type, PropertyWithAttribute[]>();
 
         /// <summary>
-        /// Returns the set of request-parameter properties for the specified request type.
-        /// Uses caching if <see cref="ReflectionCacheSettings.EnableReflectionCache"/> is enabled.
+        /// Returns the set of <see cref="RequestParameterAttribute"/>-decorated properties for the specified
+        /// request type.
         /// </summary>
-        /// <param name="type">The type to get request parameter properties for.</param>
-        /// <returns>An array of <see cref="PropertyWithAttribute"/> structs containing properties and their RequestParameterAttribute.</returns>
-        internal static PropertyWithAttribute[] GetRequestParameterProperties(Type type)
+        /// <param name="type">The request type whose parameter properties should be returned.</param>
+        /// <returns>
+        /// An array of <see cref="PropertyWithAttribute"/> values, each pairing a
+        /// <see cref="System.Reflection.PropertyInfo"/> with its <see cref="RequestParameterAttribute"/>.
+        /// Only properties that carry the attribute are included; properties without it are omitted.
+        /// </returns>
+        /// <remarks>
+        /// When <see cref="ReflectionCacheSettings.EnableReflectionCache"/> is <c>true</c>, the result is
+        /// stored in an internal <see cref="ConcurrentDictionary{TKey,TValue}"/> and returned on subsequent
+        /// calls without re-executing reflection. When the setting is <c>false</c> (the default), reflection
+        /// is performed on every invocation.
+        /// </remarks>
+        public static PropertyWithAttribute[] GetRequestParameterProperties(Type type)
         {
             // Only use cache if explicitly enabled by user
             if (ReflectionCacheSettings.EnableReflectionCache)
