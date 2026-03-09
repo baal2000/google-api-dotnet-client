@@ -32,11 +32,18 @@ namespace Google.Apis.Util
         /// <summary>
         /// Gets the <see cref="PropertyInfo"/> for the request parameter property.
         /// </summary>
+        /// <value>
+        /// The <see cref="PropertyInfo"/> that describes the request parameter property on the request type.
+        /// </value>
         public PropertyInfo Property { get; }
 
         /// <summary>
         /// Gets the <see cref="RequestParameterAttribute"/> applied to <see cref="Property"/>.
         /// </summary>
+        /// <value>
+        /// The <see cref="RequestParameterAttribute"/> that annotates <see cref="Property"/>, providing the
+        /// parameter name and <see cref="RequestParameterType"/> used when serializing the request.
+        /// </value>
         /// <remarks>
         /// This value is never <c>null</c> on instances returned by
         /// <see cref="ReflectionCache.GetRequestParameterProperties"/>; properties without the attribute
